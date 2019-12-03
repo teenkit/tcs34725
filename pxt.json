@@ -9,9 +9,6 @@
         "README.md",
         "tcs34725.ts"
     ],
-    "testFiles": [
-        "test.ts"
-    ],
     "public": true,
     "license": "MIT"
 }
