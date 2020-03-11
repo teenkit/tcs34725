@@ -95,11 +95,11 @@ namespace TCS34725_SENSOR {
         return ((buf.getNumber(NumberFormat.UInt8BE, 1) << 8) | buf.getNumber(NumberFormat.UInt8BE, 0));
     }
 
-     //% blockId="initialize_sensor" block="初始化颜色传感器"
+    //% blockId="initialize_sensor" block="初始化颜色传感器"
     export function LCS_initialize() {
         // Make sure we're connected to the right sensor.
         let chip_id = I2C_ReadReg8(LCS_Constants.ADDRESS, (LCS_Constants.COMMAND_BIT | LCS_Constants.ID))
-        
+
         if (chip_id != 0x44) {
             return // Incorrect chip ID
         }
@@ -116,7 +116,7 @@ namespace TCS34725_SENSOR {
         // Set the power and enable bits.
         I2C_WriteReg8(LCS_Constants.ADDRESS, (LCS_Constants.COMMAND_BIT | LCS_Constants.ENABLE), LCS_Constants.ENABLE_PON)
         basic.pause(10) // not sure if this is right    time.sleep(0.01) // FIXME delay for 10ms
-        
+
         I2C_WriteReg8(LCS_Constants.ADDRESS, (LCS_Constants.COMMAND_BIT | LCS_Constants.ENABLE), (LCS_Constants.ENABLE_PON | LCS_Constants.ENABLE_AEN))
     }
 
@@ -135,7 +135,7 @@ namespace TCS34725_SENSOR {
         I2C_WriteReg8(LCS_Constants.ADDRESS, (LCS_Constants.COMMAND_BIT | LCS_Constants.CONTROL), gain)
     }
 
-    
+
     function LCS_set_led_state(state: boolean) {
         I2C_WriteReg8(LCS_Constants.ADDRESS, (LCS_Constants.COMMAND_BIT | LCS_Constants.PERS), LCS_Constants.PERS_NONE)
         let val = I2C_ReadReg8(LCS_Constants.ADDRESS, (LCS_Constants.COMMAND_BIT | LCS_Constants.ENABLE))
@@ -149,34 +149,65 @@ namespace TCS34725_SENSOR {
         basic.pause(2 * (256 - LCS_integration_time_val) * 2.4) // delay for long enough for there to be new (post-change) complete values available
     }
 
+    //% blockId="getColor" block="读取颜色的颜色是"
+    export function getColor(): RGB {
+        basic.pause((256 - LCS_integration_time_val) * 2.4);
+        
+         let r = I2C_ReadReg16(LCS_Constants.ADDRESS, (LCS_Constants.COMMAND_BIT | LCS_Constants.RDATAL));
+         let g =  I2C_ReadReg16(LCS_Constants.ADDRESS, (LCS_Constants.COMMAND_BIT | LCS_Constants.GDATAL));
+         let b = I2C_ReadReg16(LCS_Constants.ADDRESS, (LCS_Constants.COMMAND_BIT | LCS_Constants.BDATAL));
+         
+         serial.writeLine("R:"+r + " G:" + g + " B:" + b);
+         
+         let color = RGB.RED;
+         let max = r;
+         if(g > max){
+             max = g;
+             color = RGB.GREEN;
+         }
+         if(b > max){
+             max = b;
+             color = RGB.BLUE;
+         }
+
+        serial.writeLine("val: " + color);
+        return color;
+    }
+    //% blockId="colorType" block="颜色值 %colorType"
+    export function colorType(colorType:RGB): RGB{
+        return colorType;
+    }
+
     //% blockId="getSensorData" block="读取颜色值 %colorId"
-    export function getColorData(color:RGB): number{
+    export function getColorData(color: RGB): number {
         basic.pause((256 - LCS_integration_time_val) * 2.4);
         let sum = I2C_ReadReg16(LCS_Constants.ADDRESS, (LCS_Constants.COMMAND_BIT | LCS_Constants.CDATAL));
         let vue = 0;
-        switch(color){
+        switch (color) {
             case RGB.RED:
                 vue = I2C_ReadReg16(LCS_Constants.ADDRESS, (LCS_Constants.COMMAND_BIT | LCS_Constants.RDATAL));
 
-            break;
+                break;
             case RGB.GREEN:
                 vue = I2C_ReadReg16(LCS_Constants.ADDRESS, (LCS_Constants.COMMAND_BIT | LCS_Constants.GDATAL));
 
-            break;
+                break;
             case RGB.BLUE:
                 vue = I2C_ReadReg16(LCS_Constants.ADDRESS, (LCS_Constants.COMMAND_BIT | LCS_Constants.BDATAL));
 
-            break;
+                break;
             case RGB.CLEAR:
                 return sum;
-            break;
+                break;
 
         }
-        vue = Math.floor(vue/sum *255);
+        vue = Math.floor(vue / sum * 255);
+
+        serial.writeLine("val: " + vue);
         return vue;
     }
 
-    
+
     function LCS_get_raw_data(delay: boolean = false): number[] {
         if (delay) {
             // Delay for the integration time to allow reading immediately after the previous read.
@@ -204,3 +235,4 @@ namespace TCS34725_SENSOR {
         return rgbc
     }
 }
+ 
